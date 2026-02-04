@@ -110,6 +110,19 @@ def create_lookahead_envelope(detection_mask, lookahead_frames=5):
             extended_mask[start:i] = True
     return extended_mask
 
+def create_release_envelope(detection_mask, release_frames=5):
+    """
+    Release: Extend reduction AFTER the detection ends.
+    Helps capture the 'tail' of the sound (aspiration in 'th', 'tr').
+    """
+    extended_mask = detection_mask.copy()
+    n = len(detection_mask)
+    for i in range(n):
+        if detection_mask[i]:
+            end = min(n, i + release_frames + 1)
+            extended_mask[i:end] = True
+    return extended_mask
+
 # ============================================================
 # CORE CLASSES
 # ============================================================
@@ -137,12 +150,13 @@ class AdaptiveDetector:
 
 class TReducerPro:
     """
-    T-Reducer v4.0 (Phase 1).
-    Now uses Hybrid Detection: Wavelet (Time) + STFT (Freq/Energy) + ZCR (Voicing).
+    T-Reducer v4.1 (Phase 1+).
+    Update: Added Release (Cut Length Control).
     """
     
     def __init__(self, sr=44100, reduction_percent=50, fps=30, 
-                 use_zcr=True, use_preemphasis=True, use_wavelet=True, lookahead_ms=5):
+                 use_zcr=True, use_preemphasis=True, use_wavelet=True, 
+                 lookahead_ms=5, release_ms=15):
         self.sr = sr
         self.n_fft = 2048
         self.hop_length = 512
@@ -154,6 +168,7 @@ class TReducerPro:
         self.use_preemphasis = use_preemphasis
         self.use_wavelet = use_wavelet
         self.lookahead_frames = int(lookahead_ms / 1000 * sr / self.hop_length)
+        self.release_frames = int(release_ms / 1000 * sr / self.hop_length)
         
         # Reduction mapping
         # FIXED: Special MUTE mode
@@ -311,9 +326,14 @@ class TReducerPro:
             else:
                 final_mask = is_spectral_event
         
-        # 4. Lookahead
+        # 4. Lookahead (Attack)
         if self.lookahead_frames > 0:
             final_mask = create_lookahead_envelope(final_mask, self.lookahead_frames)
+
+        # 5. Release (Tail Extension)
+        if self.release_frames > 0:
+            final_mask = create_release_envelope(final_mask, self.release_frames)
+            print(f"  ⏩ Release: {self.release_frames} frames extended")
             
         # Grouping & Reduction (Same as before)
         events_indices = np.where(final_mask)[0]
@@ -383,7 +403,8 @@ def main():
     parser.add_argument('--no-zcr', action='store_true')
     parser.add_argument('--no-preemphasis', action='store_true')
     parser.add_argument('--no-wavelet', action='store_true', help="Disable Wavelet detection (use legacy STFT)")
-    parser.add_argument('--lookahead', type=int, default=5)
+    parser.add_argument('--lookahead', type=int, default=5, help="Lookahead (ms) - Attack start earlier")
+    parser.add_argument('--release', type=int, default=15, help="Release (ms) - Extend cut after detection")
     
     args = parser.parse_args()
     if not Path(args.input).exists():
@@ -393,7 +414,9 @@ def main():
     reducer = TReducerPro(
         reduction_percent=args.reduction, fps=args.fps,
         use_zcr=not args.no_zcr, use_preemphasis=not args.no_preemphasis,
-        use_wavelet=not args.no_wavelet, lookahead_ms=args.lookahead
+        use_wavelet=not args.no_wavelet, 
+        lookahead_ms=args.lookahead,
+        release_ms=args.release
     )
     reducer.process_file(args.input, args.output)
 

@@ -184,13 +184,17 @@ uv run python src/t_reducer/t_reducer.py <input> <output> [options]
 | `--no-zcr` | False | Tắt ZCR (nhanh hơn nhưng kém chính xác) |
 | `--no-preemphasis` | False | Tắt Pre-emphasis |
 | `--no-wavelet` | False | Tắt Wavelet detection (dùng logic cũ) |
-| `--lookahead` | 5 | Thời gian lookahead (ms) |
+| `--lookahead` | 5 | Thời gian lookahead (ms) - Bắt đầu sớm hơn |
+| `--release` | 15 | Thời gian release (ms) - Kéo dài vết cắt |
 
 ### Ví Dụ
 
 ```bash
 # Mặc định (Hybrid Wavelet Mode)
 uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3
+
+# Tùy chỉnh độ dài vết cắt (Release 30ms cho âm TH/TR dài)
+uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3 --release 30
 
 # CHẾ ĐỘ KIỂM TRA: Tắt tiếng hoàn toàn (-1) để soi waveform
 uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3 --reduction -1
