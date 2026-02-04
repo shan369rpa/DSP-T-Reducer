@@ -11,193 +11,221 @@ Trong thu âm giọng nói tiếng Việt, các từ bắt đầu bằng **t, th
 - **Aspiration** (hơi thở) sau khi thả âm
 - **Transient** quá mạnh so với nguyên âm theo sau
 
-**Ví dụ cụ thể**:
-- "**t**u" - âm t + u
-- "**th**ì" - âm th + ì
-- "**t**a" - âm t + a
-- "**tr**ong" - âm tr + ong
-- "**tr**ên" - âm tr + ên
-
----
-
-## 📊 Đặc Tính Acoustic Của Âm T Tiếng Việt
-
-### 3 Loại Âm T Cần Xử Lý
-
-| Âm | IPA | Đặc Điểm | Tần Số Burst | VOT |
-|----|-----|----------|--------------|-----|
-| **t** | /t̪/ | Unaspirated, denti-alveolar | >4kHz | ~0ms |
-| **th** | /t̪ʰ/ | Aspirated, có hơi thở | >4kHz | 40-80ms |
-| **tr** | /ʈ͡ʂ/ | Retroflex affricate | 2-4kHz | ~0ms |
-
-### Cấu Trúc Thời Gian
-
-```
-Âm "t" trong "ta":
-|--Silence--|--Burst--|--Vowel "a"--|
-     ↓          ↓           ↓
-   0-50ms    ~10ms     rest of syllable
-
-Âm "th" trong "thì":
-|--Silence--|--Burst--|--Aspiration--|--Vowel "ì"--|
-     ↓          ↓           ↓              ↓
-   0-50ms    ~10ms      40-80ms      rest of syllable
-
-Âm "tr" trong "trong":
-|--Silence--|--Burst--|--Frication--|--Vowel "ong"--|
-     ↓          ↓           ↓              ↓
-   0-50ms    ~10ms       ~30ms       rest of syllable
-```
-
----
-
-## ✨ Tính Năng Professional (v2.0)
-
-Phiên bản mới (v2.0) đã được nâng cấp dựa trên DSP Audit:
-
-1. **Adaptive Detection**: Tự động thích nghi với volumn to/nhỏ của file (dùng Moving Average Threshold).
-2. **Frequency Tracking**: Tự động tìm vị trí tần số của âm T (Spectral Centroid) thay vì cắt mò ở 4-8kHz.
-3. **Smart Targeting**: Chỉ xử lý vùng tần số có vấn đề, giữ nguyên các dải tần khác.
-4. **Natural Sound**: Giảm gắt mượt mà, tránh hiện tượng "robot" hoặc "nghẹt mũi".
-5. **Detailed Logging**: Xuất file CSV báo cáo chi tiết từng vị trí detected (Timecode, Duration, Frequency, Reduction).
-
-## 📁 Cấu Trúc Dự Án
-
-```
-DSP (Digital Signal Processor)/
-├── README.md                    ← Bạn đang đây
-├── requirements.txt             
-│
-├── docs/
-│   └── t_sound_analysis.md      ← Phân tích chi tiết âm T
-│
-└── src/
-    └── t_reducer/
-        └── t_reducer.py         ← Module giảm âm T
-```
-
 ---
 
 ## 🚀 Quick Start
 
+```bash
 # 1. Cài đặt
 pip install -r requirements.txt
 
-# 2. Chạy module
-python src/t_reducer/t_reducer.py '/Users/sonpc/Downloads/Mẫu/DSP(T only)/TEST AI.m4a' '/Users/sonpc/Downloads/Mẫu/DSP(T only)/TEST AI_output.m4a' --reduction 50
+# 2. Chạy module (mặc định 50% reduction)
+uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3
 
-### 1. Nguyên Lý DSP từ iZotope Modules (docs/izotope_dsp_principles.md)
-- **De-plosive**: Bandpass filter + Envelope detection + Selective reduction
-- **De-click**: Spectral flux → Transient detection
-- **Deconstruct**: HPSS separation (tonal/noise/transient)
-- **Áp dụng cho âm T**: Kết hợp 3 modules cho tiếng Việt
-
-### 2. Phân Tích Âm T (docs/t_sound_analysis.md)
-- FFT/STFT cơ bản
-- Cách detect âm T trên spectrogram
-- Đặc tính tần số của t, th, tr
-
-### 3. Implementation (src/t_reducer/)
-- Algorithm detect âm T
-- Giảm burst energy
-- Làm mềm aspiration
+# 3. Tùy chỉnh mức giảm
+uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3 --reduction 70
+```
 
 ---
 
-## 🎯 Mục Tiêu Kỹ Thuật
+## ✨ Tính Năng v3.0 (Phase 0 Audit Improvements)
 
-**Input**: Audio có nhiều từ bắt đầu bằng t, th, tr  
+### 🔹 Tổng Quan
 
-**Output**: Audio với âm T giảm 30-50% harshness
+| Tính Năng | Mô Tả | Mặc Định |
+|-----------|-------|----------|
+| **ZCR Detection** | Phân biệt âm vô thanh (t,s) với âm hữu thanh (a,e) | BẬT |
+| **Pre-emphasis** | Khuếch đại tần số cao trước khi phân tích | BẬT |
+| **Lookahead** | Bắt đầu xử lý TRƯỚC KHI âm T xảy ra | 5ms |
 
-### Giải Thích Chi Tiết Output
+---
 
-Khi module xử lý xong, bạn sẽ nhận được:
+## 📚 Giải Thích Chi Tiết Các Tính Năng
 
-#### 1. File Audio Đã Xử Lý
-- **Format**: Giống input (WAV, FLAC, MP3)
-- **Sample rate**: Giữ nguyên (thường 44100Hz)
-- **Độ dài**: Giống input (không thay đổi thời lượng)
+### 1️⃣ Zero Crossing Rate (ZCR) - Tỉ Lệ Cắt Ngang Trục 0
 
-#### 2. Sự Khác Biệt Nghe Được
+#### 🤔 ZCR Là Gì?
 
-**Trước xử lý** (input):
+Hãy tưởng tượng sóng âm thanh như một đường gợn sóng lên xuống:
+
 ```
-"Tôi thì trong trên ta"
- ↑   ↑    ↑     ↑    ↑
- Âm T nghe GẮT, có cảm giác "bộp" hoặc "xẹt"
+     +1 ┌───────╮       ╭───────╮
+        │       │       │       │
+      0 ┼───────┼───────┼───────┼───────→ thời gian
+        │       │       │       │
+     -1 └───────╯       ╰───────╯
+              ↑               ↑
+         "Cắt ngang 0"   "Cắt ngang 0"
 ```
 
-**Sau xử lý** (output):
+**ZCR = Số lần sóng âm cắt ngang đường 0 trong 1 giây**
+
+#### 🎯 Tại Sao ZCR Quan Trọng?
+
+| Loại Âm | ZCR | Ví Dụ |
+|---------|-----|-------|
+| **Âm hữu thanh** (dây thanh rung) | THẤP (~50-100) | a, e, i, o, u, m, n |
+| **Âm vô thanh** (không rung dây thanh) | CAO (~300-500) | **t**, s, ch, p, k |
+
+**Ví dụ dễ hiểu:**
+- Khi bạn nói "aaaaaa" → sóng âm mượt, ít cắt ngang 0 → ZCR thấp
+- Khi bạn nói "ttttttt" → sóng âm nhiễu loạn, cắt ngang 0 liên tục → ZCR cao
+
+#### 💡 Module Dùng ZCR Như Thế Nào?
+
 ```
-"Tôi thì trong trên ta"
- ↑   ↑    ↑     ↑    ↑
- Âm T nghe MỀM hơn, tự nhiên hơn, nhưng VẪN RÕ
+Bước 1: Tính ZCR cho từng đoạn nhỏ (frame) của audio
+Bước 2: Nếu ZCR > 0.15 → Đây có thể là âm T (vô thanh)
+Bước 3: Chỉ xử lý những đoạn có ZCR cao
+Bước 4: Bỏ qua những đoạn có ZCR thấp (nguyên âm, giữ nguyên)
 ```
 
-#### 3. Thay Đổi Kỹ Thuật
+**Kết quả:** Module chỉ "đụng" vào đúng âm T, không ảnh hưởng đến nguyên âm!
 
-| Khía Cạnh | Trước | Sau (50% reduction) | Ghi Chú |
-|-----------|-------|---------------------|---------|
-| **Burst energy (4-8kHz)** | 100% | ~50% | Giảm "xẹt" high-freq |
-| **Low-freq thump (20-300Hz)** | 100% | ~50% | Giảm "bộp" low-freq |
-| **Nguyên âm sau T** | 100% | 100% | Không đổi |
-| **Clarity của âm T** | Rõ | Vẫn rõ | Không bị mất âm |
+---
 
-#### 4. Mức Độ Giảm (Reduction Levels)
+### 2️⃣ Pre-emphasis Filter - Bộ Lọc Khuếch Đại Tần Số Cao
+
+#### 🤔 Pre-emphasis Là Gì?
+
+Đây là một "bộ lọc" làm **tăng cường tần số cao** trước khi module bắt đầu phân tích.
+
+**Công thức toán học:**
+```
+y[n] = x[n] - 0.97 × x[n-1]
+```
+
+**Giải thích đơn giản:**
+- Lấy mẫu âm thanh hiện tại
+- Trừ đi 97% mẫu trước đó
+- Kết quả: Tần số cao được "boost" lên, tần số thấp bị "nhấn chìm"
+
+#### 🎯 Tại Sao Cần Pre-emphasis?
+
+**VẤN ĐỀ:** Âm T có năng lượng tập trung ở tần số cao (4-10kHz), nhưng năng lượng này nhỏ hơn nhiều so với nguyên âm (tần số thấp).
+
+```
+Trước Pre-emphasis:
+Năng lượng ▲
+    100% │████████████████  (Nguyên âm "a" - tần số thấp)
+         │
+     20% │███                (Âm "t" - tần số cao)
+         └────────────────────────────→ Tần số
+
+Sau Pre-emphasis:
+Năng lượng ▲
+     80% │████████████████  (Nguyên âm - giảm xuống)
+         │
+     60% │████████████      (Âm "t" - tăng lên, DỄ PHÁT HIỆN HƠN!)
+         └────────────────────────────→ Tần số
+```
+
+#### 💡 Lợi Ích Thực Tế
+
+- **Trước:** Module có thể BỎ SÓT âm T yếu (ví dụ khi người nói nhẹ nhàng)
+- **Sau:** Module PHÁT HIỆN ĐƯỢC CẢ âm T yếu nhờ pre-emphasis boost lên
+
+---
+
+### 3️⃣ Lookahead Buffer - Bộ Đệm "Nhìn Trước"
+
+#### 🤔 Lookahead Là Gì?
+
+Lookahead có nghĩa là **"nhìn trước"**. Module sẽ bắt đầu xử lý (giảm volume) **TRƯỚC KHI** âm T thực sự xảy ra.
+
+#### 🎯 Tại Sao Cần Lookahead?
+
+**VẤN ĐỀ:** Âm T là một "cú đấm" âm thanh cực nhanh (~5ms). Nếu bạn giảm volume SAU KHI cú đấm đã xảy ra, thì đã quá muộn!
+
+```
+KHÔNG CÓ LOOKAHEAD (XẤU):
+                    ↓ Module phát hiện âm T
+    ────────────┌───┴───┐─────────────
+                │ BURST │  ← Vẫn nghe thấy tiếng "bộp"!
+    ────────────└───────┘─────────────
+                        ↑ 
+                Bắt đầu giảm (QUÁ MUỘN!)
+
+CÓ LOOKAHEAD 5ms (TỐT):
+            ↓ Bắt đầu giảm TRƯỚC 5ms
+    ────────┬───────────────────────────
+            │   ↓ Module phát hiện âm T
+    ────────┴───┌───┴───┐─────────────
+                │ BURST │  ← Đã được giảm volume ngay từ đầu!
+    ────────────└───────┘─────────────
+```
+
+#### 💡 Ví Dụ Dễ Hiểu
+
+Hãy tưởng tượng bạn đang chạy xe và thấy ổ gà phía trước:
+- **Không có lookahead:** Bạn chỉ phanh SAU KHI đã đâm vào ổ gà → Trễ!
+- **Có lookahead:** Bạn phanh TRƯỚC KHI đến ổ gà → Mượt!
+
+**Trong audio:**
+- Lookahead 5ms = Module "nhìn thấy" âm T sắp đến từ 5 miligiây trước
+- Bắt đầu giảm volume từ lúc đó → Không có "click" hay "pop" ở đầu burst
+
+---
+
+## 📖 Hướng Dẫn CLI (Command Line)
+
+### Cú Pháp
 
 ```bash
---reduction 30  # Nhẹ nhàng (3dB)
-├─ Giảm 30% energy
-├─ Vẫn nghe thấy một chút "gắt"
-└─ Phù hợp: Audio chất lượng cao, chỉ cần polish nhẹ
-
---reduction 40  # Trung bình (4.5dB)
-├─ Giảm 40% energy
-├─ Cân bằng giữa natural và smooth
-└─ Phù hợp: Hầu hết trường hợp thu âm thông thường
-
---reduction 50  # Mạnh (6dB)
-├─ Giảm 50% energy
-├─ Âm T rất mềm mại
-└─ Phù hợp: Audio có nhiều âm T gắt, cần xử lý mạnh
+uv run python src/t_reducer/t_reducer.py <input> <output> [options]
 ```
 
-#### 5. Ví Dụ Thực Tế
+### Các Options
 
-**Use case**: Podcast tiếng Việt
+| Option | Mặc Định | Mô Tả |
+|--------|----------|-------|
+| `--reduction` | 50 | Mức giảm (0-100%). 100% = gần như mute âm T |
+| `--fps` | 30 | Frame rate của video (cho Timecode chính xác) |
+| `--no-zcr` | False | Tắt ZCR (nhanh hơn nhưng kém chính xác) |
+| `--no-preemphasis` | False | Tắt Pre-emphasis |
+| `--lookahead` | 5 | Thời gian lookahead (ms) |
+
+### Ví Dụ
+
+```bash
+# Mặc định (khuyến nghị)
+uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3
+
+# Giảm mạnh 100%
+uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3 --reduction 100
+
+# Project 24fps (cho phim)
+uv run python src/t_reducer/t_reducer.py input.wav output.wav --fps 24
+
+# Xử lý nhanh (tắt ZCR)
+uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3 --no-zcr
+
+# Lookahead dài hơn (10ms)
+uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3 --lookahead 10
 ```
-Input:  "Tôi thích trong trường này"
-        ↑ Âm T gây khó chịu khi nghe lâu
 
-Output: "Tôi thích trong trường này"
-        ↑ Âm T tự nhiên, nghe thoải mái
-        
-Kết quả: Listener có thể nghe podcast 1 giờ mà không mỏi tai
-```
+---
 
-**Không ảnh hưởng**: Các âm khác trong câu nói
+## 📁 Output Files
 
-Module chỉ xử lý:
-- ✅ Âm T (t, th, tr) ở đầu âm tiết
-- ❌ KHÔNG xử lý: nguyên âm (a, e, i, o, u)
-- ❌ KHÔNG xử lý: phụ âm khác (n, m, l, v, etc.)
-- ❌ KHÔNG xử lý: âm T ở cuối từ (như "mát", "học")
+Sau khi chạy, bạn nhận được **2 files**:
 
-**Ví dụ**:
-```
-Input:  "Tôi ăn cơm trong nhà"
-         ↑       ↑     ↑
-       Xử lý   Giữ   Xử lý
-       
-Output: Chỉ "T" và "tr" được làm mềm,
-        "ăn", "cơm", "nhà" giữ nguyên 100%
-```
+1. **`output.mp3`**: Audio đã xử lý
+2. **`output.csv`**: Log chi tiết với các cột:
+
+| Cột | Ý Nghĩa |
+|-----|---------|
+| FCP Timecode | Timecode chuẩn Final Cut Pro (HH:MM:SS:FF.SF) |
+| Start Time (s) | Thời gian bắt đầu (giây) |
+| Duration (ms) | Độ dài của burst (miligiây) |
+| Centroid (Hz) | Tần số trung tâm của âm T |
+| Avg ZCR | Giá trị ZCR trung bình (cao = vô thanh) |
+| Reduction (dB) | Mức giảm đã áp dụng |
 
 ---
 
 ## 📚 Tham Khảo
 
-- Vietnamese Phonetics - Wikipedia
-- Acoustic characteristics of Vietnamese consonants
-- iZotope De-plosive algorithm (tham khảo)
+- [Technical Audit Report](docs/TECHNICAL_AUDIT_REPORT.md)
+- [iZotope DSP Principles](docs/izotope_dsp_principles.md)
+- [T Sound Analysis](docs/t_sound_analysis.md)
