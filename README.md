@@ -163,7 +163,40 @@ Hãy tưởng tượng bạn đang chạy xe và thấy ổ gà phía trước:
 
 **Trong audio:**
 - Lookahead 5ms = Module "nhìn thấy" âm T sắp đến từ 5 miligiây trước
-- Bắt đầu giảm volume từ lúc đó → Không có "click" hay "pop" ở đầu burst
+---
+
+### 4️⃣ Lookahead & Release - Kiểm Soát Vùng Cắt
+
+#### 🤔 Cơ Chế Hoạt Động
+
+Để xử lý âm T trọn vẹn, chúng ta cần mở rộng vùng xử lý về **cả hai phía**:
+1.  **Lookahead (Mở về trước)**: Để bắt được khoảnh khắc "click" đầu tiên.
+2.  **Release (Mở về sau)**: Để bắt được đuôi gió (aspiration) của "th" hoặc tiếng rít của "tr".
+
+#### 📊 Minh Họa
+
+Giả sử module phát hiện âm T ở vị trí `[DETECT]`.
+
+```
+               [--DETECT--]             (Vùng phát hiện gốc)
+      ┌────────┴──────────┴────────┐
+      │                            │
+[<<<<<]                            [>>>>>>>>>>>>>>]
+Lookahead                          Release
+(Mở trái)                          (Mở phải)
+(5ms)                              (15ms - 100ms)
+
+Tổng vùng cắt = Lookahead + Detect + Release
+```
+
+#### 🎯 Khi Nào Cần Chỉnh?
+
+| Tình Huống | Cần Chỉnh Gì? | Giá Trị Gợi Ý |
+|------------|---------------|---------------|
+| **Nghe tiếng "bộp" hoặc "click" ở đầu** | Tăng `Lookahead` | 10ms - 20ms |
+| **Âm "th" vẫn còn tiếng xì dài** | Tăng `Release` | 50ms - 100ms |
+| **Âm "tr" vẫn còn tiếng rít** | Tăng `Release` | 30ms - 50ms |
+| **Muốn cắt gọn, sắc** | Giảm `Release` | 0ms - 5ms |
 
 ---
 
@@ -184,17 +217,13 @@ uv run python src/t_reducer/t_reducer.py <input> <output> [options]
 | `--no-zcr` | False | Tắt ZCR (nhanh hơn nhưng kém chính xác) |
 | `--no-preemphasis` | False | Tắt Pre-emphasis |
 | `--no-wavelet` | False | Tắt Wavelet detection (dùng logic cũ) |
-| `--lookahead` | 5 | Thời gian lookahead (ms) - Bắt đầu sớm hơn |
-| `--release` | 15 | Thời gian release (ms) - Kéo dài vết cắt |
+| `--lookahead` | 5 | Thời gian lookahead (ms) |
 
 ### Ví Dụ
 
 ```bash
 # Mặc định (Hybrid Wavelet Mode)
 uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3
-
-# Tùy chỉnh độ dài vết cắt (Release 30ms cho âm TH/TR dài)
-uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3 --release 30
 
 # CHẾ ĐỘ KIỂM TRA: Tắt tiếng hoàn toàn (-1) để soi waveform
 uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3 --reduction -1
