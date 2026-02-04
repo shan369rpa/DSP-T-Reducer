@@ -1,0 +1,24 @@
+# Dependencies cho DSP Learning Project
+
+# Core DSP
+numpy>=1.21.0
+scipy>=1.7.0
+librosa>=0.9.0
+
+# Audio I/O
+soundfile>=0.10.0
+audioread>=2.1.9
+
+# Visualization
+matplotlib>=3.4.0
+
+# Optional: For notebook experiments
+# jupyter>=1.0.0
+# ipywidgets>=7.6.0
+
+# Optional: Real-time audio (if needed later)  
+# pyaudio>=0.2.11
+# python-rtaudio>=0.5.0
+
+# Testing
+pytest>=7.0.0
