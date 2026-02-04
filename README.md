@@ -179,30 +179,30 @@ uv run python src/t_reducer/t_reducer.py <input> <output> [options]
 
 | Option | Mặc Định | Mô Tả |
 |--------|----------|-------|
-| `--reduction` | 50 | Mức giảm (0-100%). 100% = gần như mute âm T |
+| `--reduction` | 50 | Mức giảm (0-100%). **-1** = MUTE (Tắt tiếng hoàn toàn) |
 | `--fps` | 30 | Frame rate của video (cho Timecode chính xác) |
 | `--no-zcr` | False | Tắt ZCR (nhanh hơn nhưng kém chính xác) |
 | `--no-preemphasis` | False | Tắt Pre-emphasis |
+| `--no-wavelet` | False | Tắt Wavelet detection (dùng logic cũ) |
 | `--lookahead` | 5 | Thời gian lookahead (ms) |
 
 ### Ví Dụ
 
 ```bash
-# Mặc định (khuyến nghị)
+# Mặc định (Hybrid Wavelet Mode)
 uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3
 
-# Giảm mạnh 100%
+# CHẾ ĐỘ KIỂM TRA: Tắt tiếng hoàn toàn (-1) để soi waveform
+uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3 --reduction -1
+
+# Giảm mạnh 100% (-99dB)
 uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3 --reduction 100
 
 # Project 24fps (cho phim)
 uv run python src/t_reducer/t_reducer.py input.wav output.wav --fps 24
-
-# Xử lý nhanh (tắt ZCR)
-uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3 --no-zcr
-
-# Lookahead dài hơn (10ms)
-uv run python src/t_reducer/t_reducer.py input.mp3 output.mp3 --lookahead 10
 ```
+
+> **Note**: Từ v4.0, module tự động **Auto-Match Volume** để output không bị nhỏ hơn input.
 
 ---
 

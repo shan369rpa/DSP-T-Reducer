@@ -156,7 +156,10 @@ class TReducerPro:
         self.lookahead_frames = int(lookahead_ms / 1000 * sr / self.hop_length)
         
         # Reduction mapping
-        if reduction_percent >= 100:
+        # FIXED: Special MUTE mode
+        if reduction_percent == -1:
+             self.target_reduction_db = -200.0 # Silence
+        elif reduction_percent >= 100:
             self.target_reduction_db = -99.0
         else:
             self.target_reduction_db = (reduction_percent / 100.0) * -99.0
@@ -178,7 +181,11 @@ class TReducerPro:
 
     def process_file(self, input_path, output_path):
         print(f"🔄 Loading: {Path(input_path).name}")
+        # Keep native samplerate and do NOT normalize if possible, or track peak
         audio, _ = librosa.load(input_path, sr=self.sr)
+        
+        # Track Max Amplitude of Input to restore volume later
+        input_peak = np.max(np.abs(audio))
         
         # 1. Pre-emphasis
         if self.use_preemphasis:
@@ -191,8 +198,9 @@ class TReducerPro:
         wavelet_mask = None
         if self.use_wavelet:
             print("  🌊 Wavelet Analysis: ON (db4)")
-            # Perform detection on PRE-EMPHASIZED audio for better transient capture
-            wavelet_mask_sample = self.wavelet_detector.detect_transients(audio_processed, sensitivity=5.0)
+            # FIXED: Increased sensitivity threshold to avoid capturing background noise
+            # Was 5.0, now 8.0 for clearer, stronger transient detection
+            wavelet_mask_sample = self.wavelet_detector.detect_transients(audio_processed, sensitivity=8.0)
             
             # Convert sample mask to frame mask to match STFT
             # Resample mask? Or just check if frame contains transient samples
@@ -214,6 +222,13 @@ class TReducerPro:
         # 3. Processing
         processed_audio, stats, logs = self.process_audio(audio, audio_processed, wavelet_mask)
         
+        # FIXED: Volume Matching
+        output_peak = np.max(np.abs(processed_audio))
+        if output_peak > 0:
+            # Normalize to match input peak
+            processed_audio = processed_audio * (input_peak / output_peak)
+            print(f"  🔊 Volume Matched: Peak restored to {input_peak:.2f}")
+
         sf.write(output_path, processed_audio, self.sr)
         print(f"✅ Audio saved to: {Path(output_path).name}")
         
